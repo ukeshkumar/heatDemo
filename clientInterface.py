@@ -12,24 +12,21 @@ class clientInterface:
 
     def setup(self):
         if request.method == 'GET':
-            return "GET setup details : ", 302
-        elif request.method == 'POST':
-            return "setup details updated : " + request.data
+            return self.controller.getOSSetup()
+        elif request.method == 'POST' and request.is_json:
+            return self.controller.setOSSetup(request.json)
+        else: 
+            return "Error: Operation Not Supported", 405
 
     def stack(self, name=None):
         if request.method == 'GET':
-            ret = self.controller.createStack(name)
-            return "GET Stack details : " + name
+            return self.controller.getStackStatus(name)
         elif request.method == 'POST' and request.is_json:
-            clientData=request.json
-            clientData.setdefault('name', name)
-            print clientData
-            return request.data
-            #return "stack created : " + name
+            return self.controller.createStack(name, request.json)
         elif request.method == 'DELETE':
-            return "stack deleted : " + name
+            return self.controller.deleteStack(name)
         else: 
-            return "Error: operation not supported check ur arguments "
+            return "Error: Operation Not Supported", 405
 
     def runApp(self):
         self.app.run()
