@@ -1,6 +1,5 @@
 from openStackJobs import openStackJobs
 from stackTemplates import stackTemplates
- 
 
 
 class controller: 
@@ -8,8 +7,8 @@ class controller:
         self.stackTempl = stackTemplates()
         self.osJobs = openStackJobs()
 
-    def createStack(self, stackName, **kwargs):
-        (template, parameters) = self.stackTempl.getCreateTemplate(kwargs)
+    def createStack(self, stackName, clientData):
+        (template, parameters) = self.stackTempl.getCreateTemplate(clientData)
         return self.osJobs.createStack(stackName, template, parameters)
 
     def deleteStack(self, stackName): 
@@ -24,7 +23,9 @@ class controller:
     def getOSSetup(self):
         return self.osJobs.getSetup()
 
-    def setOSSetup(self, **kwArgs):
-        return self.osJobs.setSetup(kwArgs)
+    def setOSSetup(self, clientData):
+        if 'authUrl' not in clientData or 'username' not in clientData or 'password' not in clientData or 'tenantId' not in clientData:
+            return "Bad Request", 405
+        return self.osJobs.setSetup(clientData['authUrl'], clientData['username'], clientData['password'], clientData['tenantId'])
 
  
