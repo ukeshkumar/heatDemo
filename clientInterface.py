@@ -1,3 +1,4 @@
+#Heat demo
 #!/usr/bin/python
 
 from flask import Flask, request
@@ -19,10 +20,16 @@ class clientInterface:
         if request.method == 'GET':
             ret = self.controller.createStack(name)
             return "GET Stack details : " + name
-        elif request.method == 'POST':
-            return "stack created : " + name
+        elif request.method == 'POST' and request.is_json:
+            clientData=request.json
+            clientData.setdefault('name', name)
+            print clientData
+            return request.data
+            #return "stack created : " + name
         elif request.method == 'DELETE':
             return "stack deleted : " + name
+        else: 
+            return "Error: operation not supported check ur arguments "
 
     def runApp(self):
         self.app.run()
