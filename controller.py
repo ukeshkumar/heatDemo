@@ -15,7 +15,7 @@ class controller:
         return self.osJobs.deleteStack(stackName)
 
     def getStackStatus(self, stackName): 
-        return self.osJobs.geetStackStatus(stackName)
+        return self.osJobs.getStackStatus(stackName)
 
     def getStackOutput(self, stackName): 
         return self.osJobs.getStackOutput(stackName)
@@ -24,8 +24,8 @@ class controller:
         return self.osJobs.getSetup()
 
     def setOSSetup(self, clientData):
-        if 'authUrl' not in clientData or 'username' not in clientData or 'password' not in clientData or 'tenantId' not in clientData or 'tenantName' not in clientData:
+        if 'authUrl' not in clientData or 'username' not in clientData or 'password' not in clientData or 'tenantName' not in clientData:
             return "Bad Request", 405
-        return self.osJobs.setSetup(clientData['authUrl'], clientData['username'], clientData['password'], clientData['tenantName'], clientData['tenantId'])
+        return self.osJobs.setSetup(clientData['authUrl'], clientData['username'], clientData['password'], clientData['tenantName'])
 
  

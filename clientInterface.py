@@ -9,6 +9,7 @@ class clientInterface:
         self.controller = ctrObj
         self.app.add_url_rule('/setup', None, self.setup, methods=['GET', 'POST'])
         self.app.add_url_rule('/stack/<name>', None, self.stack, methods=['GET', 'POST', 'DELETE'])
+        self.app.add_url_rule('/stack/<name>/output', None, self.stackOutput, methods=['GET'])
 
     def setup(self):
         if request.method == 'GET':
@@ -27,6 +28,10 @@ class clientInterface:
             return self.controller.deleteStack(name)
         else: 
             return "Error: Operation Not Supported", 405
+
+    def stackOutput(self, name=None):
+        if request.method == 'GET':
+            return self.controller.getStackOutput(name)
 
     def runApp(self):
         self.app.run()

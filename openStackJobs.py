@@ -4,6 +4,7 @@ import requests
 import json
 import logging
 import sys
+import string
 
 """
     Class to handle OpenStack Credentials
@@ -17,15 +18,13 @@ class osDetails:
             self.username = config.get('openstack', 'OS_USERNAME')
             self.password = config.get('openstack', 'OS_PASSWORD')
             self.tenantname = config.get('openstack', 'OS_TENANT_NAME')
-            self.tenantid = config.get('openstack', 'OS_TENANT_ID')
         except:
             self.auth_url = None
             self.username = None
             self.password = None
             self.tenantname = None
-            self.tenantid = None
 
-    def set(self, auth_url, username, password, tenantname, tenantid):
+    def set(self, auth_url, username, password, tenantname):
         try:
             config = ConfigParser.RawConfigParser()
             config.add_section('openstack')
@@ -33,14 +32,12 @@ class osDetails:
             config.set('openstack', 'OS_USERNAME', username)
             config.set('openstack', 'OS_PASSWORD', password)
             config.set('openstack', 'OS_TENANT_NAME', tenantname)
-            config.set('openstack', 'OS_TENANT_ID', tenantid)
             with open('os.cfg', 'w') as configfile:
                 config.write(configfile)
             self.auth_url = auth_url
             self.username = username
             self.password = password
             self.tenantname = tenantname
-            self.tenantid = tenantid
             return True
         except Exception as e:
             print e
@@ -54,127 +51,191 @@ class osDetails:
 		Interacting with Openstack controller
 		for Heat orchestration
 '''
-class OpenStack_Jobs:
+class openStackJobs:
 
     def __init__(self):
         self.os = osDetails()
-        self.user_name = 'infinite'
-	self.password = 'infics123'
-#	self.os_auth_url = 'http://172.27.3.66:5000/v2.0'
-#	self.os_username = 'admin'
-#	self.os_tenantname = 'admin'
-#	self.os_password = 'foobar'
-#	self.tenant_id = '3970e34381b64fd5838e5a573835a2fd'
+        self.heat_url = ""
+        self.token = ""
+        self.tenant_id = ""
 
     def getSetup(self):
-        if self.os.authUrl == None:
+        if self.os.auth_url == None:
             return "OpenStack Credentials not found", 404
         else:
             return json.dumps(self.os.get())
 
-    def setSetup(self, authUrl, username, password, tenantName, tenantId):
-        if self.os.set(authUrl, username, password, tenantName, tenantId) == True:
+    def setSetup(self, authUrl, username, password, tenantName):
+        if self.os.set(authUrl, username, password, tenantName) == True:
             return "OpenStack credentials updated successfully"
         else:
             return "Error while updating OpenStack credentials", 400
 
-    def get_user_token(self,user_name, password, tenant_name):
+    def get_user_token(self):
         """
         Gets a keystone usertoken using the credentials provided by user
         """
-        url =  'http://172.27.3.66:5000/v2.0' + '/tokens'
+        url =  self.os.auth_url + '/tokens'
         creds = {
             'auth': {
 	        'passwordCredentials': {
-	        'username': user_name,
-	        'password': password
+	        'username': self.os.username,
+	        'password': self.os.password
 	        },
-	        'tenantName': tenant_name
+	        'tenantName': self.os.tenantname
 	    }
         }
         
-        headers = {}
-        headers["Content-type"] = "application/json"
-        resp=requests.post(url, data=json.dumps(creds), headers=headers)
-        import pdb;pdb.set_trace()
-        return resp.json()['access']
-    		
-    def createStack(self,template_file):
+        try:
+            headers = {}
+            headers["Content-type"] = "application/json"
+            resp=requests.post(url, data=json.dumps(creds), headers=headers)
+            if resp.status_code != 200:
+                return False, ("Can't get token", resp.status_code)
+            respData = resp.json().get('access')
+        except:
+            return False, (sys.exc_info()[1], 500)
+
+        # to get token
+        if respData and respData.get('token'):
+            self.token = respData.get('token').get('id')
+
+        # get heat_url
+        if respData.get('serviceCatalog'):
+            for endPoint in respData.get('serviceCatalog'):
+                if endPoint.get('type') == 'orchestration' and \
+                      type(endPoint.get('endpoints')) == list and \
+                      len(endPoint['endpoints']) > 0:
+                    self.heat_url = endPoint['endpoints'][0].get('publicURL')
+
+        if not self.token:
+            return False, ("Can't get token", 500)
+        if not self.heat_url:
+            return False, ("Can't get heat public url", 503)
+        return (True,)
+
+    def createStack(self, stack_name, template, parameters):
         '''
 	Create stack using the Heat template 
 	'''
-	url = 'http://172.27.3.66:8004/v1/' \
-			   + self.os.tenantid + '/stacks/'
-	auth_token = self.get_user_token(
-		self.os.username, self.os.password, self.os.tenantname)
-        if auth_token:
-            token = auth_token['token']
-            headers["X-Auth-Token"] = token['id']
-        base_par = '{"files": {}, "disable_rollback": true,'
-        process_data = base_par + str(parameters) + str(template) + '}'
-        data_formed=json.dumps(str3)
-        data=json.loads(data)
+        ret = self.get_user_token()
+        if not ret[0]:
+            return ret[1]
+
+        url = self.heat_url + '/stacks'
+        headers = {}
+        headers["X-Auth-Token"] = self.token
+
+        base_par = '{"files": {}, "disable_rollback": true, "stack_name": "' + stack_name + '", '
+        process_data = base_par + '"parameters": ' + str(parameters) + ', "template": ' + str(template) + ' }'
+
+        # replaces single quote to double quote, as json expects
+        process_data = string.replace(process_data, "'", '"')
+        data_formed=json.dumps(process_data)
+        data=json.loads(data_formed)
         resp = requests.post(
                 url, headers=headers, data=data)
-        return resp.json()
+
+        print data
+        print resp.status_code
+        print resp.json()
+        if resp.status_code == 201:
+            return "Stack Creating"
+        else:
+            return ("Error: while Creating the stack", resp.status_code)
  
 		
-    def deleteStack(self,stack_name):
+    def deleteStack(self, stack_name):
         '''
 	Delete the stack based on stack_name
 	'''
-	url = 'http://172.27.3.66:8004/v1/' \
-			   + self.os.tenantid + '/stacks/' + stack_name
-        auth_token = self.get_user_token(
-                self.os.username, self.os.password, self.os.tenantname)
+        stack_id = self.getStackId(stack_name)
+        if not stack_id:
+            return ("Error: Not able to fetch stack-id", 500)
+
+        ret = self.get_user_token()
+        if not ret[0]:
+            return ret[1]
+
+        url = self.heat_url + '/stacks/' + stack_name + "/" + stack_id 
         headers = {}
-        #headers["Content-type"] = "application/json"
-        if auth_token:
-            token = auth_token['token']
-            headers["X-Auth-Token"] = token['id']
+        headers["X-Auth-Token"] = self.token
         resp = requests.delete(
                 url, headers=headers)
-        return resp.json()
 
-		
-    def getStackStatus(self,stack_name):
+        print resp.status_code
+        if resp.status_code == 204:
+            return "Stack Deleted"
+        else:
+            return ("Error: while Deleting the stack", resp.status_code)
+
+
+    def getStackStatus(self, stack_name):
         '''
 	Get stack Status based on stack name
 	'''
-	url = 'http://172.27.3.66:8004/v1/' \
-			   + self.os.tenantid + '/stacks/' + stack_name
-	auth_token = self.get_user_token(
-		self.os.username, self.os.password, self.os.tenantname)
-        #headers["Content-type"] = "application/json"
+        ret = self.get_user_token()
+        if not ret[0]:
+            return ret[1]
+
+	url = self.heat_url + '/stacks/' + stack_name
         headers = {}
-        if auth_token:
-            token = auth_token['token']
-            headers["X-Auth-Token"] = token['id']
-        import pdb;pdb.set_trace()
+        headers["X-Auth-Token"] = self.token
 	resp = requests.get(
 		url, headers=headers)
-        return resp.json()['stack']['stack_status']
-		
-    def getStackOutput(self,stack_name,stack_id,template_file):
+
+        if resp.status_code in [200, 302] and resp.json().get('stack'):
+            return resp.json()['stack'].get('stack_status')
+        else:
+            return ("Error: while fetching Stack Status", resp.status_code)
+
+
+    def getStackId(self, stack_name):
+        '''
+	Get the stack-id of the specific stack-name
+	'''
+        ret = self.get_user_token()
+        if not ret[0]:
+            return None
+
+	url = self.heat_url + '/stacks/' + stack_name
+        headers = {}
+        headers["X-Auth-Token"] = self.token
+        resp = requests.get(
+                url, headers=headers)
+
+        if resp.status_code in [200, 302] and resp.json().get('stack'):
+            return resp.json()['stack'].get('id')
+        return None
+        
+
+    def getStackOutput(self, stack_name):
         '''
 	Get the output of the stack based on stack user
 	'''
-	url = 'http://172.27.3.66:8004/v1/' \
-			   + self.os.tenantid + '/stacks/' + stack_name + '/' + stack_id + '/outputs'
-	auth_token = self.get_user_token(
-                self.os.username, self.os.password, self.os.tenantname)
+        stack_id = self.getStackId(stack_name)
+        if not stack_id:
+            return ("Error: Not able to fetch stack-id", 500)
+        
+        ret = self.get_user_token()
+        if not ret[0]:
+            return ret[1]
+
+	url = self.heat_url + '/stacks/' + stack_name + '/' + stack_id + '/outputs'
         headers = {}
-        if auth_token:
-            token = auth_token['token']
-            headers["X-Auth-Token"] = token['id']
+        headers["X-Auth-Token"] = self.token
         resp = requests.get(
                 url, headers=headers)
-        return resp.json()
+        if resp.status_code == 200:
+            return str(resp.json())
+        else:
+            return ("Error: while fetching output", resp.status_code)
+
 
 if __name__== "__main__":
-    obj1=OpenStack_Jobs()
-    status_resp =obj1.getStackStatus('heat-stack')
-    stack_view=obj1.getStackOutput('heat-stack','fdd9a7b6-95e1-453a-bd6d-9ad9e0a18b7c',"abc.yaml") 
+    obj1=openStackJobs()
+    status_resp =obj1.getStackStatus('tssd')
+    stack_view=obj1.getStackOutput('tssd') 
     print status_resp
     print stack_view
 
