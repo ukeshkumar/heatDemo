@@ -96,6 +96,7 @@ class OpenStack_Jobs:
         headers = {}
         headers["Content-type"] = "application/json"
         resp=requests.post(url, data=json.dumps(creds), headers=headers)
+        import pdb;pdb.set_trace()
         return resp.json()['access']
     		
     def createStack(self,template_file):
@@ -106,10 +107,17 @@ class OpenStack_Jobs:
 			   + self.os.tenantid + '/stacks/'
 	auth_token = self.get_user_token(
 		self.os.username, self.os.password, self.os.tenantname)
-        
-	resp = self.post_request(
-		url, auth_token, nova_cacert=False, stream=False)
-	return resp.json()['switches']	
+        if auth_token:
+            token = auth_token['token']
+            headers["X-Auth-Token"] = token['id']
+        base_par = '{"files": {}, "disable_rollback": true,'
+        process_data = base_par + str(parameters) + str(template) + '}'
+        data_formed=json.dumps(str3)
+        data=json.loads(data)
+        resp = requests.post(
+                url, headers=headers, data=data)
+        return resp.json()
+ 
 		
     def deleteStack(self,stack_name):
         '''
@@ -142,9 +150,10 @@ class OpenStack_Jobs:
         if auth_token:
             token = auth_token['token']
             headers["X-Auth-Token"] = token['id']
+        import pdb;pdb.set_trace()
 	resp = requests.get(
 		url, headers=headers)
-        return resp.json()
+        return resp.json()['stack']['stack_status']
 		
     def getStackOutput(self,stack_name,stack_id,template_file):
         '''
