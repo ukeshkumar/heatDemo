@@ -26,8 +26,8 @@ class controller:
         return self.osJobs.getSetup()
 
     def setOSSetup(self, clientData):
-        if 'authUrl' not in clientData or 'username' not in clientData or 'password' not in clientData or 'tenantName' not in clientData:
+        if 'authurl' not in clientData or 'userid' not in clientData or 'password' not in clientData or 'tenantname' not in clientData or 'projectid' not in clientData or 'domainname' not in clientData:
             return "Bad Request", 405
-        return self.osJobs.setSetup(clientData['authUrl'], clientData['username'], clientData['password'], clientData['tenantName'])
+        return self.osJobs.setSetup(clientData['authurl'], clientData['userid'], clientData['password'], clientData['tenantname'], clientData['projectid'], clientData['domainname'])
 
  

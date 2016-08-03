@@ -13,43 +13,39 @@ class osDetails:
         try:
             config = ConfigParser.RawConfigParser()
             config.read('things/os.cfg')
-            self.auth_url = config.get('openstack', 'OS_AUTH_URL')
-            self.username = config.get('openstack', 'OS_USERNAME')
-            self.password = config.get('openstack', 'OS_PASSWORD')
-            self.tenantname = config.get('openstack', 'OS_TENANT_NAME')
-            self.domain_name = config.get('openstack', 'OS_DOMAIN_NAME')
-            self.user_id = config.get('openstack', 'OS_USER_ID')
-            self.tenant_id = config.get('openstack', 'OS_TENANT_ID')
+            self.auth_url = config.get('openstack', 'os_auth_url')
+            self.password = config.get('openstack', 'os_password')
+            self.tenantname = config.get('openstack', 'os_tenant_name')
+            self.domain_name = config.get('openstack', 'os_domain_name')
+            self.user_id = config.get('openstack', 'os_userid')
+            self.project_id = config.get('openstack', 'os_project_id')
             
         except:
             self.auth_url = None
-            self.username = None
             self.password = None
             self.tenantname = None
             self.domain_name = None
             self.user_id = None
-            self.tenant_id = None
+            self.project_id = None
 
-    def set(self, auth_url, username, password, tenantname):
+    def set(self, auth_url, userid, password, tenantname, projectid, domainname):
         try:
             config = ConfigParser.RawConfigParser()
             config.add_section('openstack')
-            config.set('openstack', 'OS_AUTH_URL', auth_url)
-            config.set('openstack', 'OS_USERNAME', username)
-            config.set('openstack', 'OS_PASSWORD', password)
-            config.set('openstack', 'OS_TENANT_NAME', tenantname)
-            config.set('openstack', 'OS_DOMAIN_NAME', domain_name)
-            config.set('openstack', 'OS_USER_ID', user_id)
-            config.set('openstack', 'OS_TENANT_ID', tenant_id)
+            config.set('openstack', 'os_auth_url', auth_url)
+            config.set('openstack', 'os_userid', userid)
+            config.set('openstack', 'os_password', password)
+            config.set('openstack', 'os_tenant_name', tenantname)
+            config.set('openstack', 'os_domain_name', domainname)
+            config.set('openstack', 'os_project_id', projectid)
             with open('things/os.cfg', 'w') as configfile:
                 config.write(configfile)
             self.auth_url = auth_url
-            self.username = username
+            self.user_id = userid
             self.password = password
             self.tenantname = tenantname
-            self.domain_name = domain_name
-            self.user_id = user_id
-            self.tenant_id = tenant_id
+            self.domain_name = domainname
+            self.project_id = projectid
             return True
         except Exception as e:
             print e
@@ -77,8 +73,8 @@ class openStackJobs:
         else:
             return json.dumps(self.os.get())
 
-    def setSetup(self, authUrl, username, password, tenantName):
-        if self.os.set(authUrl, username, password, tenantName) == True:
+    def setSetup(self, authurl, userid, password, tenantname, projectid, domainname):
+        if self.os.set(authurl, userid, password, tenantname, projectid, domainname) == True:
             return "OpenStack credentials updated successfully"
         else:
             return "Error while updating OpenStack credentials", 400
@@ -98,24 +94,23 @@ class openStackJobs:
                     ],
                     "password": {
                     "user": {
-#                        "id": "6709e2caaac944dfafa1a5945cf8a49a",
-#                        "id": self.os.user_id,
-                        "id": "admin",
+                        "id": self.os.user_id,
                         "domain": {
-                            "id": "default"
+                            "id": self.os.domain_name
                                   },
-                        "password": "root123"
+                        "password": self.os.password
                             }
                                 }
                            },
                 "scope": {
                     "project": {
-                        "id": "cff654e1722248b695fb921ccd1d72aa"
+                        "id": self.os.project_id
                                }
                          }
                    }
                }
 
+        print creds
         try:
             headers = {}
             headers["Content-type"] = "application/json"

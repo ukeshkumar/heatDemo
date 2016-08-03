@@ -8,7 +8,7 @@ class stackTemplates:
         for key_name in para_list: 
             if key_name in clientData: 
                 parameters[key_name]=clientData[key_name]
-        template=yaml.load(open('template.yaml'))
+        template=yaml.load(open('things/template.yaml'))
         return template,parameters 
 
 if __name__ == "__main__" : 
