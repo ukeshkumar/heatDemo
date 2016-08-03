@@ -48,7 +48,7 @@ class clientInterface:
             return self.controller.getStackOutput(name)
 
     def runApp(self):
-        self.app.run()
+        self.app.run(port=9000)
     
 
 if __name__ == "__main__":
