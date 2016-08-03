@@ -15,6 +15,8 @@ class controller:
         return self.osJobs.deleteStack(stackName)
 
     def getStackStatus(self, stackName): 
+        #import pdb;pdb.set_trace();
+        print "in get"
         return self.osJobs.getStackStatus(stackName)
 
     def getStackOutput(self, stackName): 

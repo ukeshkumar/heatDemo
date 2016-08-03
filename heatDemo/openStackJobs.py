@@ -1,4 +1,3 @@
-
 import ConfigParser
 import requests
 import json
@@ -13,16 +12,23 @@ class osDetails:
     def __init__(self):
         try:
             config = ConfigParser.RawConfigParser()
-            config.read('os.cfg')
+            config.read('things/os.cfg')
             self.auth_url = config.get('openstack', 'OS_AUTH_URL')
             self.username = config.get('openstack', 'OS_USERNAME')
             self.password = config.get('openstack', 'OS_PASSWORD')
             self.tenantname = config.get('openstack', 'OS_TENANT_NAME')
+            self.domain_name = config.get('openstack', 'OS_DOMAIN_NAME')
+            self.user_id = config.get('openstack', 'OS_USER_ID')
+            self.tenant_id = config.get('openstack', 'OS_TENANT_ID')
+            
         except:
             self.auth_url = None
             self.username = None
             self.password = None
             self.tenantname = None
+            self.domain_name = None
+            self.user_id = None
+            self.tenant_id = None
 
     def set(self, auth_url, username, password, tenantname):
         try:
@@ -32,12 +38,18 @@ class osDetails:
             config.set('openstack', 'OS_USERNAME', username)
             config.set('openstack', 'OS_PASSWORD', password)
             config.set('openstack', 'OS_TENANT_NAME', tenantname)
-            with open('os.cfg', 'w') as configfile:
+            config.set('openstack', 'OS_DOMAIN_NAME', domain_name)
+            config.set('openstack', 'OS_USER_ID', user_id)
+            config.set('openstack', 'OS_TENANT_ID', tenant_id)
+            with open('things/os.cfg', 'w') as configfile:
                 config.write(configfile)
             self.auth_url = auth_url
             self.username = username
             self.password = password
             self.tenantname = tenantname
+            self.domain_name = domain_name
+            self.user_id = user_id
+            self.tenant_id = tenant_id
             return True
         except Exception as e:
             print e
@@ -75,38 +87,62 @@ class openStackJobs:
         """
         Gets a keystone usertoken using the credentials provided by user
         """
-        url =  self.os.auth_url + '/tokens'
+        url =  self.os.auth_url + '/auth/tokens'
+#        url  =  'http://172.27.3.191:5000/v3/auth/tokens' 
+        #import pdb;pdb.set_trace() 
         creds = {
-            'auth': {
-	        'passwordCredentials': {
-	        'username': self.os.username,
-	        'password': self.os.password
-	        },
-	        'tenantName': self.os.tenantname
-	    }
-        }
-        
+            "auth": {
+                "identity": {
+                "methods": [
+                "password"
+                    ],
+                    "password": {
+                    "user": {
+#                        "id": "6709e2caaac944dfafa1a5945cf8a49a",
+#                        "id": self.os.user_id,
+                        "id": "admin",
+                        "domain": {
+                            "id": "default"
+                                  },
+                        "password": "root123"
+                            }
+                                }
+                           },
+                "scope": {
+                    "project": {
+                        "id": "cff654e1722248b695fb921ccd1d72aa"
+                               }
+                         }
+                   }
+               }
+
         try:
             headers = {}
             headers["Content-type"] = "application/json"
             resp=requests.post(url, data=json.dumps(creds), headers=headers)
-            if resp.status_code != 200:
+            if resp.status_code not in [200, 201]:
                 return False, ("Can't get token", resp.status_code)
-            respData = resp.json().get('access')
+            respData = resp.json()
         except:
             return False, (sys.exc_info()[1], 500)
 
         # to get token
-        if respData and respData.get('token'):
-            self.token = respData.get('token').get('id')
+        if resp and resp.headers.get('X-Subject-Token'):
+            self.token = resp.headers.get('X-Subject-Token')
 
         # get heat_url
-        if respData.get('serviceCatalog'):
-            for endPoint in respData.get('serviceCatalog'):
+        print resp
+        if respData.get('token').get('catalog'):
+            '''
+            for endPoint in resp.get('serviceCatalog'):
                 if endPoint.get('type') == 'orchestration' and \
                       type(endPoint.get('endpoints')) == list and \
                       len(endPoint['endpoints']) > 0:
                     self.heat_url = endPoint['endpoints'][0].get('publicURL')
+            '''
+#            print respData['token']['catalog'][]
+            self.heat_url = "http://172.27.3.191:8004/v1/cff654e1722248b695fb921ccd1d72aa" 
+#            self.heat_url = respData['token']['catalog'][5]['endpoints']['url']
 
         if not self.token:
             return False, ("Can't get token", 500)

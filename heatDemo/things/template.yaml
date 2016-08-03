@@ -11,12 +11,12 @@ parameters:
     type: string
     label: Key Name
     description: Name of key-pair to be used for compute instance
-    default: demo1 
+    default: key1 
   image:
     type: string
     label: Image ID
     description: Image to be used for compute instance
-    default: cirros-0.3.4-x86_64-uec
+    default: cirros
 
   type:
     type: string
@@ -27,7 +27,7 @@ parameters:
     type: string
     label: Network Id 
     description: Network for openstack instance to be used 
-    default: net1 
+    default: provider 
     
 resources:
   my_instance:

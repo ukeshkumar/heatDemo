@@ -1,0 +1,3 @@
+include heateasy README
+recursive-include  heatDemo/things * 
+
