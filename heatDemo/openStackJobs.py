@@ -4,6 +4,7 @@ import json
 import logging
 import sys
 import string
+import os 
 
 """
     Class to handle OpenStack Credentials
@@ -11,39 +12,37 @@ import string
 class osDetails:
     def __init__(self):
         try:
+            dir_path = os.path.dirname(os.path.realpath(__file__))
             config = ConfigParser.RawConfigParser()
-            config.read('things/os.cfg')
-            self.auth_url = config.get('openstack', 'os_auth_url')
-            self.password = config.get('openstack', 'os_password')
-            self.tenantname = config.get('openstack', 'os_tenant_name')
-            self.domain_name = config.get('openstack', 'os_domain_name')
-            self.user_id = config.get('openstack', 'os_userid')
-            self.project_id = config.get('openstack', 'os_project_id')
+            config.read(dir_path + '/things/os.cfg')
+            self.auth_url = config.get('openstack', 'auth_url')
+            self.password = config.get('openstack', 'password')
+            self.domain_name = config.get('openstack', 'domain_name')
+            self.user_id = config.get('openstack', 'user_id')
+            self.project_id = config.get('openstack', 'project_id')
             
         except:
             self.auth_url = None
             self.password = None
-            self.tenantname = None
             self.domain_name = None
             self.user_id = None
             self.project_id = None
 
-    def set(self, auth_url, userid, password, tenantname, projectid, domainname):
+    def set(self, auth_url, userid, password, projectid, domainname):
         try:
             config = ConfigParser.RawConfigParser()
             config.add_section('openstack')
-            config.set('openstack', 'os_auth_url', auth_url)
-            config.set('openstack', 'os_userid', userid)
-            config.set('openstack', 'os_password', password)
-            config.set('openstack', 'os_tenant_name', tenantname)
-            config.set('openstack', 'os_domain_name', domainname)
-            config.set('openstack', 'os_project_id', projectid)
-            with open('things/os.cfg', 'w') as configfile:
+            config.set('openstack', 'auth_url', auth_url)
+            config.set('openstack', 'userid', userid)
+            config.set('openstack', 'password', password)
+            config.set('openstack', 'domain_name', domainname)
+            config.set('openstack', 'project_id', projectid)
+            dir_path = os.path.dirname(os.path.realpath(__file__))
+            with open(dir_path + '/things/os.cfg', 'w') as configfile:
                 config.write(configfile)
             self.auth_url = auth_url
             self.user_id = userid
             self.password = password
-            self.tenantname = tenantname
             self.domain_name = domainname
             self.project_id = projectid
             return True
@@ -65,7 +64,6 @@ class openStackJobs:
         self.os = osDetails()
         self.heat_url = ""
         self.token = ""
-        self.tenant_id = ""
 
     def getSetup(self):
         if self.os.auth_url == None:
@@ -73,8 +71,8 @@ class openStackJobs:
         else:
             return json.dumps(self.os.get())
 
-    def setSetup(self, authurl, userid, password, tenantname, projectid, domainname):
-        if self.os.set(authurl, userid, password, tenantname, projectid, domainname) == True:
+    def setSetup(self, authurl, userid, password, projectid, domainname):
+        if self.os.set(authurl, userid, password, projectid, domainname) == True:
             return "OpenStack credentials updated successfully"
         else:
             return "Error while updating OpenStack credentials", 400
