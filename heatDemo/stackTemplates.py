@@ -1,5 +1,6 @@
 import yaml
 import os
+import json
 
 class stackTemplates:
     def __init__(self): 
@@ -7,11 +8,13 @@ class stackTemplates:
 
     def getCreateTemplate(self,clientData): 
         parameters={}
-        para_list=['name', 'image', 'type', 'netname', 'key'] 
+        para_list=['name', 'image', 'type', 'netname', 'key', 'instance_count'] 
         for key_name in para_list: 
             if key_name in clientData: 
                 parameters[key_name]=clientData[key_name]
+                print clientData[key_name]
         template=yaml.load(open(self.dir_path + '/things/template.yaml'))
+        parameters = json.dumps(parameters)
         return template,parameters 
 
 if __name__ == "__main__" : 

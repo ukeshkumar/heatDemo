@@ -162,6 +162,7 @@ class openStackJobs:
         process_data = string.replace(process_data, "'", '"')
         data_formed=json.dumps(process_data)
         data=json.loads(data_formed)
+        print " entering into create stack "
         resp = requests.post(
                 url, headers=headers, data=data)
 
@@ -251,12 +252,13 @@ class openStackJobs:
             return ret[1]
 
 	url = self.heat_url + '/stacks/' + stack_name + '/' + stack_id + '/outputs'
+	url = self.heat_url + '/stacks/' + stack_name + '/' + stack_id
         headers = {}
         headers["X-Auth-Token"] = self.token
         resp = requests.get(
                 url, headers=headers)
         if resp.status_code == 200:
-            return str(resp.json())
+            return str(resp.json()['stack']['outputs'])
         else:
             return ("Error: while fetching output", resp.status_code)
 
